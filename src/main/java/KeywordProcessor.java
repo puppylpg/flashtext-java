@@ -1,35 +1,30 @@
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collections;
+import java.util.*;
 
 public class KeywordProcessor {
 
-    public String entity_name;
+    /**
+     * TODO: 木有空格
+     */
+    private static final String PUNCTUATIONS = "[!\"#$%&'()*+,-./:;<=>?@\\^_`{|}~]*";
+
     private String _keyword;
-    private Set<String> _white_space_chars;
     private int _terms_in_trie;
 
     public Map<String, Object> keyword_trie_dict;
     public boolean case_sensitive;
     public List<String> word_boundaries = Arrays.asList(new String[]{" ", "\t", "\n", ",", "."});
 
-    public KeywordProcessor(String entity_name) {
-        this.entity_name = entity_name;
+    public KeywordProcessor() {
         this._keyword = "_keyword_";
-        this._white_space_chars = new HashSet<>(Arrays.asList(".", "\t", "\n", " ", ","));
         this.keyword_trie_dict = new HashMap<>();
         this.case_sensitive = false;
         this._terms_in_trie = 0;
     }
 
-    private int __len__() {
+    public int __len__() {
         return this._terms_in_trie;
     }
 
@@ -431,7 +426,7 @@ public class KeywordProcessor {
 
     }
 
-    public ArrayList<MatchResult> extract_keywords(String sentence) {
+    public List<MatchResult> extract_keywords(String sentence) {
         /*
         Searches in the string for all keywords present in corpus.
         Keywords present are added to a list `keywords_extracted` and returned.
@@ -452,7 +447,7 @@ public class KeywordProcessor {
                 >>> ['New York', 'Bay Area']
          */
 
-        ArrayList<MatchResult> keywords_extracted = new ArrayList<>();
+        List<MatchResult> keywords_extracted = new ArrayList<>();
 
         if (sentence.isEmpty()) {
             return keywords_extracted;
@@ -473,8 +468,13 @@ public class KeywordProcessor {
         while (idx < sentence_len) {
             String ch = String.valueOf(sentence.charAt(idx));
 
-            // 分界
-            if (this.word_boundaries.contains("" + ch)) {
+            if (PUNCTUATIONS.contains(ch)) {
+                idx++;
+                continue;
+            }
+
+            // 分界 TODO: 后者是为了让中文匹配结束
+            if (this.word_boundaries.contains("" + ch) || current_dict.containsKey(this._keyword)) {
                 // if end is present in current_dict
                 // TODO: 中文可能不需要分界
                 // 找到该分界匹配，或者找到头了
@@ -499,6 +499,11 @@ public class KeywordProcessor {
                         // 依次查找
                         while (idy < sentence_len) {
                             char inner_char = sentence.charAt(idy);
+
+                            if (PUNCTUATIONS.contains(inner_char + "")) {
+                                idy++;
+                                continue;
+                            }
 
                             // 字符又是分界，且匹配到头了
                             if (this.word_boundaries.contains("" + inner_char) && current_dict_continued.containsKey(this._keyword)) {
@@ -538,6 +543,9 @@ public class KeywordProcessor {
                     }
                     reset_current_dict = true;
 
+                    // 回退一位，否则如果是中文的话，这一位就被跳过去了。英文把空格回退回去再匹一遍也没影响
+                    idx--;
+
                 } else {
                     // 没找到分界，重置
                     current_dict = this.keyword_trie_dict;
@@ -558,7 +566,12 @@ public class KeywordProcessor {
                 while (idy < sentence_len) {
                     char chy = sentence.charAt(idy);
                     // 走到下一个边界，再开始匹配
-                    if (this.word_boundaries.contains("" + chy)) {
+                    // TODO：非ascii直接开始匹配
+                    if (this.word_boundaries.contains("" + chy) || !StringUtils.isAsciiPrintable("" + chy)) {
+
+                        if (!StringUtils.isAsciiPrintable("" + chy)) {
+                            idy--;
+                        }
                         break;
                     }
                     idy += 1;
