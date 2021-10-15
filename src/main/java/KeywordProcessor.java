@@ -3,6 +3,12 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 
+/**
+ * 匹配的时候忽略文字里的特殊字符{@link #PUNCTUATIONS}，所以关键字里也要去掉这些字符。
+ * - 支持匹配最长的关键字；
+ * - 支持忽略特殊字符；
+ * - 不支持任意空格
+ */
 public class KeywordProcessor {
 
     /**
@@ -474,7 +480,7 @@ public class KeywordProcessor {
             }
 
             // 分界 TODO: 后者是为了让中文匹配结束
-            if (this.word_boundaries.contains("" + ch) || current_dict.containsKey(this._keyword)) {
+            if (this.word_boundaries.contains("" + ch) || (current_dict.containsKey(this._keyword) && !StringUtils.isAsciiPrintable("" + ch)  )) {
                 // if end is present in current_dict
                 // TODO: 中文可能不需要分界
                 // 找到该分界匹配，或者找到头了
